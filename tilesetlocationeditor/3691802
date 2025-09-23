@@ -1,0 +1,67 @@
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <title>Cesium ion</title>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="Images/cesium-logomark.svg" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="Images/cesium-logomark-192.png"
+    />
+    <link rel="apple-touch-icon" href="Images/cesium-logomark-192.png" />
+    <link
+      rel="mask-icon"
+      href="Images/cesium-logomark-mask.svg"
+      color="rgb(15,98,105)"
+    />
+    <base href="/index.html" />
+    <link href="index.css" rel="stylesheet" />
+    <link href="fonts.css" rel="stylesheet" />
+    <script>
+      let isAsyncSupported;
+      try {
+        isAsyncSupported = eval(
+          "typeof Object.getPrototypeOf(async function() {}).constructor === 'function'",
+        );
+      } catch (exception) {
+        isAsyncSupported = false;
+      }
+      if (!isAsyncSupported || typeof HTMLSlotElement === "undefined") {
+        window.location.replace("unsupported.html");
+      }
+    </script>
+    <script>
+      window.CESIUM_BASE_URL = "/ThirdParty/cesium";
+      var require = {
+        waitSeconds: 60,
+        baseUrl: "/",
+      };
+    </script>
+    <script src="ThirdParty/cesium/Cesium.js"></script>
+    <!-- Even though we don't call some of them directly, all ion-sdk scripts
+         need to be included in order to active all visualization features -->
+    <script src="ThirdParty/ion-sdk-geometry/IonSdkGeometry.js"></script>
+    <script src="ThirdParty/ion-sdk-sensors/IonSdkSensors.js"></script>
+    <script src="ThirdParty/ion-sdk-measurements/IonSdkMeasurements.js"></script>
+    <script src="ThirdParty/aws-sdk-s3.js"></script>
+    <script src="ThirdParty/zip.js"></script>
+    <script src="ThirdParty/require.js" data-main="main.js" defer></script>
+    <script src="dashboard-esm.js"></script>
+  </head>
+
+  <body>
+    <div id="applicationHost">
+      <div class="page-loading-placeholder">
+        <div>
+          <img src="Images/logo.svg" alt="Cesium ion" />
+        </div>
+        <div class="fa fa-spinner fa-pulse fa-2x fa-spin"></div>
+      </div>
+    </div>
+  </body>
+</html>
