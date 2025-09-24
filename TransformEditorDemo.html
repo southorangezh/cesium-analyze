@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>3D Tiles Location Editor Demo</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/cesium@1.133.0/Build/Cesium/Widgets/widgets.css"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: "Segoe UI", "Helvetica Neue", Arial, "PingFang SC", sans-serif;
+        background: #1a1d21;
+        color: #f0f3f8;
+      }
+
+      #cesiumContainer {
+        position: absolute;
+        inset: 0;
+      }
+
+      .toolbar {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        z-index: 100;
+        max-width: 420px;
+        background: rgba(16, 18, 22, 0.88);
+        border: 1px solid rgba(80, 120, 180, 0.45);
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(6px);
+      }
+
+      .toolbar h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .toolbar section {
+        margin-bottom: 12px;
+      }
+
+      .toolbar label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 4px;
+        color: #a5c8ff;
+      }
+
+      .toolbar input,
+      .toolbar select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(120, 150, 200, 0.45);
+        background: rgba(26, 29, 33, 0.9);
+        color: #f0f3f8;
+        font-size: 13px;
+      }
+
+      .toolbar button {
+        margin-top: 8px;
+        width: 100%;
+        padding: 8px 12px;
+        background: linear-gradient(135deg, #4481eb, #04befe);
+        border: none;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .toolbar button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .toolbar .hint {
+        font-size: 12px;
+        color: #9aa9c8;
+        margin-top: 4px;
+        line-height: 1.4;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        margin-top: 8px;
+      }
+
+      .toggle-row input {
+        width: auto;
+      }
+
+      #status {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        z-index: 100;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: rgba(20, 24, 32, 0.92);
+        border: 1px solid rgba(72, 120, 180, 0.55);
+        color: #d9e6ff;
+        font-size: 13px;
+        min-width: 280px;
+        max-width: 420px;
+        display: none;
+      }
+
+      #infoPanel {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        z-index: 100;
+        width: 320px;
+        background: rgba(16, 18, 22, 0.9);
+        border: 1px solid rgba(80, 120, 180, 0.45);
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(6px);
+      }
+
+      #infoPanel h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      #infoPanel dl {
+        margin: 0;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px 12px;
+        font-size: 13px;
+      }
+
+      #infoPanel dt {
+        color: #9bb8ff;
+      }
+
+      #infoPanel textarea {
+        width: 100%;
+        margin-top: 8px;
+        padding: 6px 8px;
+        border-radius: 4px;
+        border: 1px solid rgba(120, 150, 200, 0.45);
+        background: rgba(26, 29, 33, 0.9);
+        color: #d8e4ff;
+        font-size: 12px;
+        resize: vertical;
+        min-height: 120px;
+      }
+
+      #infoPanel button {
+        margin-top: 8px;
+        width: 100%;
+        padding: 6px 10px;
+        background: rgba(68, 129, 235, 0.85);
+        border: none;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      #transformEditorContainer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      #transformEditorContainer > * {
+        pointer-events: auto;
+      }
+
+      .status-error {
+        border-color: rgba(220, 100, 120, 0.8) !important;
+        color: #ffc6d0 !important;
+      }
+
+      .status-success {
+        border-color: rgba(90, 200, 160, 0.8) !important;
+        color: #c6ffef !important;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "@cesium/engine": "./Source/cesiumEngine.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="cesiumContainer"></div>
+    <div id="transformEditorContainer"></div>
+    <div class="toolbar">
+      <h1>3D Tiles 位置编辑器</h1>
+      <section>
+        <label for="ionToken">Cesium ion Access Token</label>
+        <input
+          id="ionToken"
+          type="password"
+          placeholder="在此粘贴或输入令牌"
+          autocomplete="off"
+        />
+        <p class="hint">令牌仅在浏览器内使用，可根据需要随时更新。</p>
+      </section>
+      <section>
+        <label for="sourceMode">数据源</label>
+        <select id="sourceMode">
+          <option value="local">本地 3D Tiles (/assets)</option>
+          <option value="ion">Cesium ion 资产</option>
+        </select>
+      </section>
+      <section id="localSourceSection">
+        <label for="localUrl">本地 tileset.json 路径</label>
+        <input
+          id="localUrl"
+          type="text"
+          value="./assets/tileset/tileset.json"
+          placeholder="例如 ./assets/tileset/tileset.json"
+        />
+        <p class="hint">
+          确保将 tileset.json 与相关资源放在仓库的 <code>/assets</code> 目录下，路径可自定义。
+        </p>
+      </section>
+      <section id="ionSourceSection" style="display: none">
+        <label for="ionAssetId">Cesium ion Asset ID</label>
+        <input id="ionAssetId" type="number" min="1" placeholder="输入资产 ID" />
+        <p class="hint">需要在上方填写有效的 Access Token。</p>
+      </section>
+      <button id="loadButton">加载 3D Tiles</button>
+      <div class="toggle-row">
+        <input type="checkbox" id="toggleEditor" checked />
+        <label for="toggleEditor">启用 Transform Editor 控件</label>
+      </div>
+      <div class="toggle-row">
+        <input type="checkbox" id="autoFocus" checked />
+        <label for="autoFocus">加载后自动飞行至模型</label>
+      </div>
+    </div>
+    <div id="infoPanel">
+      <h2>当前变换参数</h2>
+      <dl>
+        <dt>位置 (米)</dt>
+        <dd id="positionInfo">-</dd>
+        <dt>旋转 (°)</dt>
+        <dd id="rotationInfo">-</dd>
+        <dt>缩放</dt>
+        <dd id="scaleInfo">-</dd>
+      </dl>
+      <textarea id="matrixInfo" readonly></textarea>
+      <button id="copyMatrix">复制 modelMatrix</button>
+      <button id="resetTransform">重置为单位变换</button>
+    </div>
+    <div id="status"></div>
+
+    <script type="module">
+      import CesiumNamespace from "@cesium/engine";
+      import {
+        Cartesian3,
+        HeadingPitchRoll,
+        Ion,
+        IonResource,
+        Matrix4,
+        Viewer,
+      } from "@cesium/engine";
+      import TransformEditor from "./Source/TransformEditor/TransformEditor.js";
+
+      const Cesium = CesiumNamespace;
+      const statusEl = document.getElementById("status");
+      const positionInfoEl = document.getElementById("positionInfo");
+      const rotationInfoEl = document.getElementById("rotationInfo");
+      const scaleInfoEl = document.getElementById("scaleInfo");
+      const matrixInfoEl = document.getElementById("matrixInfo");
+      const loadButton = document.getElementById("loadButton");
+      const ionTokenInput = document.getElementById("ionToken");
+      const sourceModeSelect = document.getElementById("sourceMode");
+      const localUrlInput = document.getElementById("localUrl");
+      const ionAssetInput = document.getElementById("ionAssetId");
+      const localSection = document.getElementById("localSourceSection");
+      const ionSection = document.getElementById("ionSourceSection");
+      const toggleEditor = document.getElementById("toggleEditor");
+      const autoFocus = document.getElementById("autoFocus");
+      const transformEditorContainer = document.getElementById(
+        "transformEditorContainer",
+      );
+      const copyMatrixButton = document.getElementById("copyMatrix");
+      const resetTransformButton = document.getElementById("resetTransform");
+
+      function showStatus(message, type = "info") {
+        statusEl.textContent = message;
+        statusEl.style.display = "block";
+        statusEl.classList.remove("status-error", "status-success");
+        if (type === "error") {
+          statusEl.classList.add("status-error");
+        } else if (type === "success") {
+          statusEl.classList.add("status-success");
+        }
+      }
+
+      function clearStatus() {
+        statusEl.style.display = "none";
+        statusEl.textContent = "";
+        statusEl.classList.remove("status-error", "status-success");
+      }
+
+      const viewer = new Viewer("cesiumContainer", {
+        animation: false,
+        timeline: false,
+        baseLayerPicker: false,
+        geocoder: false,
+        homeButton: false,
+        navigationHelpButton: false,
+        sceneModePicker: false,
+        fullscreenButton: true,
+        infoBox: false,
+        selectionIndicator: false,
+        terrainProvider: new Cesium.EllipsoidTerrainProvider(),
+      });
+
+      let currentTileset = null;
+      let transformEditor = null;
+
+      function disposeEditor() {
+        if (transformEditor) {
+          transformEditor.destroy();
+          transformEditor = null;
+        }
+      }
+
+      function removeTileset() {
+        if (currentTileset) {
+          viewer.scene.primitives.remove(currentTileset);
+          currentTileset = null;
+        }
+        disposeEditor();
+      }
+
+      sourceModeSelect.addEventListener("change", () => {
+        const mode = sourceModeSelect.value;
+        if (mode === "ion") {
+          localSection.style.display = "none";
+          ionSection.style.display = "block";
+        } else {
+          ionSection.style.display = "none";
+          localSection.style.display = "block";
+        }
+      });
+
+      ionTokenInput.addEventListener("change", () => {
+        const token = ionTokenInput.value.trim();
+        Ion.defaultAccessToken = token || undefined;
+        if (token) {
+          showStatus("已更新 Cesium ion Token。", "success");
+        } else {
+          clearStatus();
+        }
+      });
+
+      async function resolveResource() {
+        const mode = sourceModeSelect.value;
+        if (mode === "ion") {
+          const token = ionTokenInput.value.trim();
+          if (!token) {
+            throw new Error("请先填写 Cesium ion Access Token。");
+          }
+          const assetId = Number.parseInt(ionAssetInput.value, 10);
+          if (!Number.isFinite(assetId)) {
+            throw new Error("请输入有效的 Cesium ion Asset ID。");
+          }
+          return IonResource.fromAssetId(assetId);
+        }
+        const url = localUrlInput.value.trim();
+        if (!url) {
+          throw new Error("请输入本地 tileset.json 路径。");
+        }
+        return url;
+      }
+
+      async function loadTileset() {
+        loadButton.disabled = true;
+        showStatus("正在加载 3D Tiles...", "info");
+        try {
+          const resource = await resolveResource();
+          const tileset = await Cesium.Cesium3DTileset.fromUrl(resource);
+          removeTileset();
+          currentTileset = tileset;
+          viewer.scene.primitives.add(tileset);
+          await tileset.readyPromise;
+          showStatus("3D Tiles 加载完成。", "success");
+          if (autoFocus.checked) {
+            viewer.flyTo(tileset, {
+              duration: 1.8,
+              offset: new HeadingPitchRoll(0.0, -0.8, 0.0),
+            });
+          }
+          setupTransformEditor();
+        } catch (error) {
+          console.error(error);
+          showStatus(`加载失败：${error.message}`, "error");
+          removeTileset();
+        } finally {
+          loadButton.disabled = false;
+        }
+      }
+
+      function setupTransformEditor() {
+        disposeEditor();
+        if (!currentTileset) {
+          return;
+        }
+        const boundingSphere = currentTileset.boundingSphere;
+        const transformMatrix = currentTileset.modelMatrix;
+        transformEditor = new TransformEditor({
+          container: transformEditorContainer,
+          scene: viewer.scene,
+          transform: transformMatrix,
+          boundingSphere,
+          pixelSize: 90,
+        });
+        transformEditor.viewModel.setOriginPosition(boundingSphere.center);
+        if (toggleEditor.checked) {
+          transformEditor.viewModel.activate();
+        }
+        updateTransformInfo();
+      }
+
+      function formatVector(vector) {
+        if (!vector) {
+          return "-";
+        }
+        return `${vector.x.toFixed(3)}, ${vector.y.toFixed(3)}, ${vector.z.toFixed(3)}`;
+      }
+
+      function updateTransformInfo() {
+        if (!transformEditor || !currentTileset) {
+          positionInfoEl.textContent = "-";
+          rotationInfoEl.textContent = "-";
+          scaleInfoEl.textContent = "-";
+          matrixInfoEl.value = "";
+          return;
+        }
+        const viewModel = transformEditor.viewModel;
+        const position = viewModel.position;
+        const hpr = viewModel.headingPitchRoll;
+        const scale = viewModel.scale;
+        positionInfoEl.textContent = formatVector(position);
+        rotationInfoEl.textContent = `${Cesium.Math.toDegrees(hpr.heading).toFixed(
+          2,
+        )}, ${Cesium.Math.toDegrees(hpr.pitch).toFixed(2)}, ${Cesium.Math.toDegrees(
+          hpr.roll,
+        ).toFixed(2)}`;
+        scaleInfoEl.textContent = formatVector(scale);
+        const matrix = Matrix4.clone(currentTileset.modelMatrix, new Matrix4());
+        const elements = Matrix4.toArray(matrix);
+        const formatted = elements
+          .map((value, index) => {
+            const padded = value.toFixed(6).padStart(12, " ");
+            const end = (index + 1) % 4 === 0 ? "\n" : " ";
+            return padded + end;
+          })
+          .join("");
+        matrixInfoEl.value = formatted.trim();
+      }
+
+      viewer.clock.onTick.addEventListener(updateTransformInfo);
+
+      toggleEditor.addEventListener("change", () => {
+        if (!transformEditor) {
+          return;
+        }
+        if (toggleEditor.checked) {
+          transformEditor.viewModel.activate();
+          showStatus("Transform Editor 已启用。", "success");
+        } else {
+          transformEditor.viewModel.deactivate();
+          showStatus("Transform Editor 已停用。", "info");
+        }
+      });
+
+      copyMatrixButton.addEventListener("click", async () => {
+        if (!matrixInfoEl.value) {
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(matrixInfoEl.value);
+          showStatus("modelMatrix 已复制到剪贴板。", "success");
+        } catch (error) {
+          console.error(error);
+          showStatus("复制失败，请检查浏览器权限。", "error");
+        }
+      });
+
+      resetTransformButton.addEventListener("click", () => {
+        if (!currentTileset || !transformEditor) {
+          return;
+        }
+        currentTileset.modelMatrix = Matrix4.clone(
+          Matrix4.IDENTITY,
+          currentTileset.modelMatrix,
+        );
+        const viewModel = transformEditor.viewModel;
+        viewModel.position = new Cartesian3(0.0, 0.0, 0.0);
+        viewModel.headingPitchRoll = new HeadingPitchRoll(0.0, 0.0, 0.0);
+        viewModel.scale = new Cartesian3(1.0, 1.0, 1.0);
+        updateTransformInfo();
+        if (!toggleEditor.checked) {
+          viewer.scene.requestRender();
+        }
+        showStatus("已重置为单位变换。", "success");
+      });
+
+      loadButton.addEventListener("click", () => {
+        clearStatus();
+        loadTileset();
+      });
+
+      window.addEventListener("unload", () => {
+        disposeEditor();
+        removeTileset();
+        viewer.destroy();
+      });
+
+      updateTransformInfo();
+    </script>
+  </body>
+</html>
